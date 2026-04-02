@@ -17,6 +17,7 @@ export default function AttendancePage() {
   const faceMatcherRef = useRef(null);
   const [mode, setMode] = useState('multiple'); // 'single' or 'multiple'
   const [scanMode, setScanMode] = useState('face'); // 'face' or 'qr'
+  const [isTransitioning, setIsTransitioning] = useState(false);
   // tuning for robustness
   const matchCountsRef = useRef({}); // consecutive match counters per label
   const MATCH_THRESHOLD = 0.48; // lower distance is stricter (0.48 is stricter than 0.6)
@@ -347,8 +348,8 @@ export default function AttendancePage() {
 
                   <div className="mt-3 flex gap-2 items-center">
                     <div className="flex items-center space-x-2">
-                      <button onClick={() => setScanMode('face')} className={`px-3 py-2 rounded-md text-sm ${scanMode === 'face' ? 'bg-blue-600 text-white' : 'bg-white border'}`}>Face Recognition</button>
-                      <button onClick={() => setScanMode('qr')} className={`px-3 py-2 rounded-md text-sm ${scanMode === 'qr' ? 'bg-blue-600 text-white' : 'bg-white border'}`}>QR Code Scanner</button>
+                      <button disabled={isTransitioning} onClick={() => { if (!isTransitioning) { setIsTransitioning(true); setScanMode('face'); setTimeout(() => setIsTransitioning(false), 500); } }} className={`px-3 py-2 rounded-md text-sm ${scanMode === 'face' ? 'bg-blue-600 text-white' : 'bg-white border'} disabled:opacity-50`}>Face Recognition</button>
+                      <button disabled={isTransitioning} onClick={() => { if (!isTransitioning) { setIsTransitioning(true); setScanMode('qr'); setTimeout(() => setIsTransitioning(false), 500); } }} className={`px-3 py-2 rounded-md text-sm ${scanMode === 'qr' ? 'bg-blue-600 text-white' : 'bg-white border'} disabled:opacity-50`}>QR Code Scanner</button>
                     </div>
                   </div>
 
