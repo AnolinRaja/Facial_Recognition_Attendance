@@ -10,7 +10,14 @@ const studentRoutes = require('./routes/students');
 const attendanceRoutes = require('./routes/attendance');
 
 const app = express();
-app.use(cors());
+
+// Configure CORS to allow all origins
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json({ limit: '20mb' }));
 
 // ✅ Serve uploaded student photos
