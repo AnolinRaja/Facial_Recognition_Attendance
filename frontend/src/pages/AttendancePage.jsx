@@ -17,7 +17,7 @@ export default function AttendancePage() {
   const faceMatcherRef = useRef(null);
   const [mode, setMode] = useState('multiple'); // 'single' or 'multiple'
   const [scanMode, setScanMode] = useState('face'); // 'face' or 'qr'
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const scanModeRef = useRef('face');
   // tuning for robustness
   const matchCountsRef = useRef({}); // consecutive match counters per label
   const MATCH_THRESHOLD = 0.48; // lower distance is stricter (0.48 is stricter than 0.6)
@@ -258,53 +258,49 @@ export default function AttendancePage() {
 
   // start/stop html5-qrcode scanner when scanMode changes
   useEffect(() => {
-    if (scanMode !== 'qr') {
-      // stop scanner if running
-      if (qrScannerRef.current) {
-        qrScannerRef.current.stop().then(() => {
-          qrScannerRef.current = null;
-        }).catch((err) => {
-          console.warn('QR scanner stop error:', err);
-          qrScannerRef.current = null;
-        });
-      }
+    scanModeRef.current = scanMode;
+    
+    // Clean up QR scanner if switching away from QR mode
+    if (scanMode !== 'qr' && qrScannerRef.current) {
+      qrScannerRef.current.stop().catch((err) => {
+        console.warn('QR scanner stop error:', err);
+      }).finally(() => {
+        qrScannerRef.current = null;
+      });
       return;
     }
 
-    let mounted = true;
-    const regionId = qrRegionId;
+    // Start QR scanner if switching to QR mode
+    if (scanMode === 'qr') {
+      let mounted = true;
+      const regionId = qrRegionId;
 
-    const startScanner = async () => {
-      try {
-        const html5Qr = new Html5Qrcode(regionId, { verbose: false });
-        qrScannerRef.current = html5Qr;
-        await html5Qr.start(
-          { facingMode: 'environment' },
-          { fps: 10, qrbox: 250 },
-          (decodedText) => { if (mounted) handleQrResult(decodedText); },
-          (errorMessage) => { /* ignore scan errors */ }
-        );
-      } catch (err) {
-        console.warn('QR scanner start failed', err);
-        setStatus('Camera/QR init failed');
-      }
-    };
-
-    startScanner();
-
-    return () => {
-      mounted = false;
-      if (qrScannerRef.current) {
-        qrScannerRef.current.stop().then(() => {
-          if (qrScannerRef.current) {
-            qrScannerRef.current = null;
+      const startScanner = async () => {
+        try {
+          if (!mounted) return;
+          const html5Qr = new Html5Qrcode(regionId, { verbose: false });
+          qrScannerRef.current = html5Qr;
+          
+          await html5Qr.start(
+            { facingMode: 'environment' },
+            { fps: 10, qrbox: 250 },
+            (decodedText) => { if (mounted && scanModeRef.current === 'qr') handleQrResult(decodedText); },
+            (errorMessage) => { /* ignore scan errors */ }
+          );
+        } catch (err) {
+          if (mounted) {
+            console.warn('QR scanner start failed', err);
+            setStatus('Camera/QR init failed');
           }
-        }).catch((err) => {
-          console.warn('QR cleanup error:', err);
-          qrScannerRef.current = null;
-        });
-      }
-    };
+        }
+      };
+
+      startScanner();
+
+      return () => {
+        mounted = false;
+      };
+    }
   }, [scanMode]);
 
   return (
@@ -348,8 +344,8 @@ export default function AttendancePage() {
 
                   <div className="mt-3 flex gap-2 items-center">
                     <div className="flex items-center space-x-2">
-                      <button disabled={isTransitioning} onClick={() => { if (!isTransitioning) { setIsTransitioning(true); setScanMode('face'); setTimeout(() => setIsTransitioning(false), 500); } }} className={`px-3 py-2 rounded-md text-sm ${scanMode === 'face' ? 'bg-blue-600 text-white' : 'bg-white border'} disabled:opacity-50`}>Face Recognition</button>
-                      <button disabled={isTransitioning} onClick={() => { if (!isTransitioning) { setIsTransitioning(true); setScanMode('qr'); setTimeout(() => setIsTransitioning(false), 500); } }} className={`px-3 py-2 rounded-md text-sm ${scanMode === 'qr' ? 'bg-blue-600 text-white' : 'bg-white border'} disabled:opacity-50`}>QR Code Scanner</button>
+                      <button onClick={() => setScanMode('face')} className={`px-3 py-2 rounded-md text-sm ${scanMode === 'face' ? 'bg-blue-600 text-white' : 'bg-white border'}`}>Face Recognition</button>
+                      <button onClick={() => setScanMode('qr')} className={`px-3 py-2 rounded-md text-sm ${scanMode === 'qr' ? 'bg-blue-600 text-white' : 'bg-white border'}`}>QR Code Scanner</button>
                     </div>
                   </div>
 
