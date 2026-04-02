@@ -1,23 +1,29 @@
 // backend/utils/mailer.js
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASS = process.env.EMAIL_PASS;
 
-let resend = null;
+let transporter = null;
 
-if (!RESEND_API_KEY) {
-  console.warn('⚠️  RESEND_API_KEY not configured. Emails will not be sent.');
+if (!EMAIL_USER || !EMAIL_PASS) {
+  console.warn('⚠️  EMAIL_USER or EMAIL_PASS not configured. Emails will not be sent.');
 } else {
   try {
-    resend = new Resend(RESEND_API_KEY);
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: EMAIL_USER,
+        pass: EMAIL_PASS,
+      },
+    });
     console.log('🔍 Email config check:');
-    console.log('   Service: Resend');
-    console.log('   API Key length:', RESEND_API_KEY.length, 'characters');
-    console.log('   API Key (masked):', RESEND_API_KEY.substring(0, 5) + '***' + RESEND_API_KEY.substring(RESEND_API_KEY.length - 5));
-    console.log('✅ Email transporter (Resend) configured successfully');
+    console.log('   Service: Gmail');
+    console.log('   Email User:', EMAIL_USER);
+    console.log('✅ Email transporter (Gmail) configured successfully');
   } catch (err) {
-    console.error('❌ Failed to initialize Resend:', err.message);
-    resend = null;
+    console.error('❌ Failed to initialize Gmail transporter:', err.message);
+    transporter = null;
   }
 }
 
@@ -27,7 +33,7 @@ async function sendAttendanceEmail(to, studentName, timeStr) {
     return false;
   }
 
-  if (!resend) {
+  if (!transporter) {
     console.warn('⚠️  Email not configured; skipping attendance email to:', to);
     return false;
   }
@@ -37,9 +43,10 @@ async function sendAttendanceEmail(to, studentName, timeStr) {
     <p>Your attendance has been marked at <b>${timeStr}</b>.</p>
     <p>— Facial Attendance System</p>
   `;
+  
   try {
-    const response = await resend.emails.send({
-      from: 'Attendance System <onboarding@resend.dev>',
+    const response = await transporter.sendMail({
+      from: EMAIL_USER,
       to,
       subject: 'Attendance marked',
       html
@@ -58,7 +65,7 @@ async function sendQrCodeEmail(to, studentName, qrCodeData) {
     return false;
   }
 
-  if (!resend) {
+  if (!transporter) {
     console.warn('⚠️  Email not configured; skipping QR code email to:', to);
     return false;
   }
@@ -72,8 +79,8 @@ async function sendQrCodeEmail(to, studentName, qrCodeData) {
   try {
     const base64Data = qrCodeData.split("base64,")[1];
     
-    const response = await resend.emails.send({
-      from: 'Attendance System <onboarding@resend.dev>',
+    const response = await transporter.sendMail({
+      from: EMAIL_USER,
       to,
       subject: 'QR Code for Attendance',
       html,
