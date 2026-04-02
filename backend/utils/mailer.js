@@ -39,7 +39,7 @@ async function sendAttendanceEmail(to, studentName, timeStr) {
   `;
   try {
     const response = await resend.emails.send({
-      from: 'Attendance System <aorganization45@gmail.com>',
+      from: 'Attendance System <onboarding@resend.dev>',
       to,
       subject: 'Attendance marked',
       html
@@ -73,7 +73,7 @@ async function sendQrCodeEmail(to, studentName, qrCodeData) {
     const base64Data = qrCodeData.split("base64,")[1];
     
     const response = await resend.emails.send({
-      from: 'Attendance System <aorganization45@gmail.com>',
+      from: 'Attendance System <onboarding@resend.dev>',
       to,
       subject: 'QR Code for Attendance',
       html,
