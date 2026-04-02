@@ -18,6 +18,7 @@ export default function AttendancePage() {
   const [mode, setMode] = useState('multiple'); // 'single' or 'multiple'
   const [scanMode, setScanMode] = useState('face'); // 'face' or 'qr'
   const scanModeRef = useRef('face');
+  const qrScannerStateRef = useRef('stopped'); // 'stopped', 'starting', 'running'
   // tuning for robustness
   const matchCountsRef = useRef({}); // consecutive match counters per label
   const MATCH_THRESHOLD = 0.48; // lower distance is stricter (0.48 is stricter than 0.6)
@@ -262,11 +263,14 @@ export default function AttendancePage() {
     
     // Clean up QR scanner if switching away from QR mode
     if (scanMode !== 'qr' && qrScannerRef.current) {
-      qrScannerRef.current.stop().catch((err) => {
-        console.warn('QR scanner stop error:', err);
-      }).finally(() => {
-        qrScannerRef.current = null;
-      });
+      if (qrScannerStateRef.current === 'running') {
+        qrScannerStateRef.current = 'stopped';
+        qrScannerRef.current.stop().catch((err) => {
+          console.warn('QR scanner stop error:', err);
+        }).finally(() => {
+          qrScannerRef.current = null;
+        });
+      }
       return;
     }
 
@@ -277,7 +281,8 @@ export default function AttendancePage() {
 
       const startScanner = async () => {
         try {
-          if (!mounted) return;
+          if (!mounted || qrScannerStateRef.current !== 'starting') return;
+          
           const html5Qr = new Html5Qrcode(regionId, { verbose: false });
           qrScannerRef.current = html5Qr;
           
@@ -287,14 +292,21 @@ export default function AttendancePage() {
             (decodedText) => { if (mounted && scanModeRef.current === 'qr') handleQrResult(decodedText); },
             (errorMessage) => { /* ignore scan errors */ }
           );
+          
+          if (mounted) {
+            qrScannerStateRef.current = 'running';
+          }
         } catch (err) {
           if (mounted) {
             console.warn('QR scanner start failed', err);
             setStatus('Camera/QR init failed');
+            qrScannerStateRef.current = 'stopped';
+            qrScannerRef.current = null;
           }
         }
       };
 
+      qrScannerStateRef.current = 'starting';
       startScanner();
 
       return () => {
