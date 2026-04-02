@@ -260,8 +260,12 @@ export default function AttendancePage() {
     if (scanMode !== 'qr') {
       // stop scanner if running
       if (qrScannerRef.current) {
-        qrScannerRef.current.stop().catch(() => {});
-        qrScannerRef.current = null;
+        qrScannerRef.current.stop().then(() => {
+          qrScannerRef.current = null;
+        }).catch((err) => {
+          console.warn('QR scanner stop error:', err);
+          qrScannerRef.current = null;
+        });
       }
       return;
     }
@@ -290,9 +294,14 @@ export default function AttendancePage() {
     return () => {
       mounted = false;
       if (qrScannerRef.current) {
-        qrScannerRef.current.stop().catch(() => {});
-        qrScannerRef.current.clear().catch(() => {});
-        qrScannerRef.current = null;
+        qrScannerRef.current.stop().then(() => {
+          if (qrScannerRef.current) {
+            qrScannerRef.current = null;
+          }
+        }).catch((err) => {
+          console.warn('QR cleanup error:', err);
+          qrScannerRef.current = null;
+        });
       }
     };
   }, [scanMode]);
